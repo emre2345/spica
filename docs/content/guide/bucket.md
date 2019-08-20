@@ -4,7 +4,7 @@
 
 # Bucket
 
-Buckets are schemas of your data. They keep all the necessary information about your data such as their structure, validations.
+Buckets are schemas of your data model. They keep all the necessary information about your data such as their structure and validations.
 
 ## List
 
@@ -55,13 +55,13 @@ To define your data models on your application, you have to define your data mod
 
 ### With Client
 
-To create a new Bucket, go to Bucket listing page and find the plus (`+`) icon. Clicking it will take you to Bucket creation page. Or if you want to edit one of your Buckets, on listing page find the desired Bucket and click the `pen` icon next to it.
+To create a new Bucket, go to Bucket listing page and find the plus (`+`) icon. Clicking it will take you to the Bucket creation page. Or if you want to edit one of your Buckets, find the desired Bucket on listing page and click the `pen` icon next to it.
 
 Bucket Create/Edit form divides into a few sections.
 
 #### Top Bar and Describe
 
-On top bar you'll see and icon as default. You can click to change the icon of the Bucket. That icon will be shown on the sidebar next to the Bucket title.
+On top bar you'll see an icon as default. You can click to change the icon of the Bucket. That icon will be shown on the sidebar next to the Bucket title.
 
 To save the Bucket, you have to enter a Title and a Description to explain the Bucket's purpose. While the Title is limited with 15 characters, Description is limited with 250.
 
@@ -163,7 +163,7 @@ To add localization to a property, click the `cog` icon next to the property tit
 
 > Note: Only the following type of properties can have localization; `string`, `textarea` and `richtext`
 
-Once you save the Bucket, go to the Bucket Data Add page and you'll see a language selection next to the input of the multilingual property. You can select desired language code, entering a value and switch to another language and so on.
+Once you save the Bucket, go to the Bucket Data Add page and you'll see a language selection next to the input of the multilingual property. You can select desired language code, enter a value and switch to another language and so on.
 
 The final form of a multilingual property will be like this:
 
@@ -192,7 +192,7 @@ You can find your Buckets on the side menu under `Content` section. Clicking any
 
 On top bar of the List Page, you'll see the Title and the Description of the Bucket.
 
-> Tips: `info` icon next to the title, helps you to copy `_id` of the Bucket.
+> Tips: `info` icon next to the title, helps you to copy the `_id` property of the Bucket.
 
 Left side of the top bar contains some buttons to change listing. From left to right;
 
@@ -253,9 +253,9 @@ Example response:
 
 ### With Client
 
-To edit an existing data, go to the Bucket Data Listing page and click the `edit` button of the data you would like to edit. To create new, click on the `plus` icon on top of the listing page.
+To edit an existing data, go to the Bucket Data Listing page and click the `edit` button of the data you would like to edit. To create a new one, click on the `plus` icon on top of the listing page.
 
-Spica Client will generate the needed form for you. Fill the form and click on `Save` button.
+Spica Client will generate the needed form for you. Fill the form and click on the `Save` button.
 
 ### With API
 
@@ -272,11 +272,11 @@ Example request body:
 }
 ```
 
-To edit an existing data, put `_id` of the data you would like to edit. To create, don't send `_id` in your request.
+To update an existing data, put `_id` of the data you would like to edit. To create, don't include `_id` in your request.
 
 ## History
 
-If you have followed the Installation guide and set your MongoDB replica sets correctly, your Spica instance keeps bucket data changes. It doesn't matter if you changed the data from the client, API calls or directly from the database as Spica listens to your database changes.
+If you have followed the Installation guide and set your MongoDB replica sets correctly, your Spica instance keeps bucket data changes. It doesn't matter if you have changed the data from the client, API calls or directly from the database, as Spica listens to your database changes.
 
 ### With Client
 

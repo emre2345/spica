@@ -6,9 +6,9 @@ There are different types of trigger settings such as database trigger, http tri
 Each subscriptions have their own logs. So you can see when the particular subscription has been triggered and what data has been sent.
 You can also send a bucket entry data to your subscription url.
 
-Some examples you can to set a subscription are;
+Example use cases for subscription;
 
-- You want to get notified each time when there is a new entry in specific bucket.
-- You want to get notified each time when there is a change in an entry in specific bucket.
+- You want to get notified each time when there is a new entry in a bucket.
+- You want to get notified each time when there is a change in an entry in a bucket.
 
 To see how to setup a subscription, please visit Guide documentation.

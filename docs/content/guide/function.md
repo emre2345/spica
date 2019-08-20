@@ -28,7 +28,7 @@ See the following table for common `functions` use cases:
 
 There are events in the Spica. As an example there is an event when there is a change in the database or receive an HTTP request
 
-If you attach a trigger to your function, your function will be executed when the event raised.
+If you attach a trigger to your function, your function will be executed when the event occurs.
 
 Currently, the Functions supports following triggers:
 
@@ -38,7 +38,7 @@ Currently, the Functions supports following triggers:
 
 ### Event Data
 
-Event trigger will pass the data as parameters to the function when the event raised. The parameters will be different related to the type of event.
+Event trigger will pass the data as parameters to the function when the event occurs. The parameters will be different related to the type of event.
 
 For example a function which has http trigger will look like this:
 
@@ -55,9 +55,9 @@ See [triggers](#triggers) section for parameter types.
 
 ### Modules
 
-Spica provides modules to your function in runtime. Modules work like a module in node_modules but not placed in node_modules directory.
+Spica provides modules to your function in runtime. Modules work like a module in node_modules but aren't placed in node_modules directory.
 
-> NOTE: Modules are not published in a registry like npmjs.com, so you can not install or use outside of a spica.
+> NOTE: Modules are not published in a registry like npmjs.com, so you can't install or use outside of a spica.
 
 Currently, there are few modules helps you to get information about your spica.
 
@@ -78,7 +78,7 @@ Path and Method, the method must be one of the specified HTTP methods above also
 
 > HINT: When you save your function the endpoint will be provisioned automatically.
 
-> **IMPORTANT:** The path and method are not validated for any collision with another function's path and method. So make sure that the path and method not used by other functions otherwise you function may override other function's path.
+> **IMPORTANT:** The path and method are not validated for any collision with another function's path and method. So make sure that the path and method aren't used by other functions. Otherwise your function may override other function's path.
 
 #### Method
 
@@ -94,11 +94,11 @@ Currently, these methods are valid for use;
 - `HEAD`
 - `OPTIONS`
 
-Also, you can use `ANY` method that covers all methods above which means your function will be executed regardless of the HTTP method of request that bein received.
+Also, you can use `ANY` method to cover all the methods above which means your function will be executed regardless of the HTTP method of request that bein received.
 
 #### Path
 
-Spica will use the path will use when reserve a trigger URL for your function. When you save your function, the trigger URL will be attached to **`{API_URL}/fn-execute`** as suffix URL.
+Spica will use the path will use when reserve a trigger URL for your function. Once you save a function, the trigger URL will be attached to **`{API_URL}/fn-execute`** as suffix URL.
 
 For example;
 
@@ -161,7 +161,7 @@ export default function(request: triggers.http.Request, response: triggers.http.
 }
 ```
 
-If you send a `POST` request to this function with following `JSON` payload; You will get the exact payload to response back because we used `request.body` as a response payload.
+If you send a `POST` request to this function with following `JSON` payload, you will get the exact payload to response back because we used `request.body` as a response payload.
 
 ```json
 {
@@ -269,7 +269,7 @@ Cron expression made of five-string separated with a whitespace character.
 
 > Crontab is a good tool for learning cron expressions. Checkout [CronTab](https://crontab.guru)
 
-Here is some example of CRON expressions
+Here are some examples of CRON expressions
 
 | Expression  | Description                                                |
 | :---------: | ---------------------------------------------------------- |
@@ -284,7 +284,7 @@ Here is some example of CRON expressions
 
 ### Database
 
-The database module is an in-memory module that has public API for basic database operations like `FIND`, `INSERT`, `UPDATE`, `REPLACE`, `DELETE`, `DROP`.
+The database module is an in-memory module which has a public API for basic database operations like `FIND`, `INSERT`, `UPDATE`, `REPLACE`, `DELETE`, `DROP`.
 
 > Database module imported from `@internal/database`.
 

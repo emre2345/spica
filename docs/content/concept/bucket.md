@@ -39,7 +39,7 @@ Product name: `string`
 
 ## Auto-Publish
 
-For scheduled publish, there is an auto-publish feature in the bucket module. So you can set a date for a specific entry and the system will make that particular entry available in that time. You can see all scheduled entries and published entries in different tabs. To get more details about accessing to scheduled entry, please see API reference.
+For scheduled publish, there is an auto-publish feature in the bucket module. So you can set a date for a specific entry and the system will make that entry available in that time. You can see all scheduled entries and published entries in different tabs. To get more details about accessing to scheduled entry, please see API reference.
 
 ## History / Revisions
 

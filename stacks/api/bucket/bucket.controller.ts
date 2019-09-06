@@ -29,17 +29,8 @@ export class BucketController {
 
   @Get("templates")
   getTemplates() {
-    return this.bs.findTemplates();
+    return [];
   }
-
-  // TODO(thesayyn): Uncomment this method after service implementation
-  // @Post("templates")
-  // @UseGuards(AuthGuard(), ActionGuard("bucket:update"))
-  // createFromTemplate(@Body() template) {
-  //   this.bs.createFromTemplate(template).then(res => {
-  //     console.log(res);
-  //   });
-  // }
 
   @Get()
   @UseGuards(AuthGuard(), ActionGuard("bucket:index"))

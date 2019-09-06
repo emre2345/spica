@@ -28,6 +28,7 @@ ts_library(
     testonly = True,
     srcs = [
         "levenshtein.spec.ts",
+        "database.service.spec.ts"
     ],
     deps = [
         ":realtime",

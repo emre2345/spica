@@ -1,5 +1,5 @@
 import {Module} from "@nestjs/common";
-import {HistoryModule} from "@spica-server/bucket/history";
+//import {HistoryModule} from "@spica-server/bucket/history";
 import {RealtimeModule} from "@spica-server/bucket/realtime";
 import {SchemaModule, Validator} from "@spica-server/core/schema";
 import {DatabaseService} from "@spica-server/database";
@@ -20,7 +20,7 @@ const PropertyOptionsSchema = require("./schemas/property-options.schema.json");
   controllers: [BucketController, BucketDataController],
   imports: [
     PreferenceModule,
-    HistoryModule,
+    //HistoryModule,
     RealtimeModule,
     SchemaModule.forChild({
       keywords: [CUSTOM_TYPES],

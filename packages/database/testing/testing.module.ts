@@ -72,7 +72,7 @@ export class DatabaseTestingModule implements OnModuleDestroy {
               {
                 useNewUrlParser: true,
                 replicaSet: server.opts.replSet.name,
-                poolSize: 200
+                poolSize: 400,
               }
             );
           },

@@ -1,7 +1,9 @@
 import {Logger, Module} from "@nestjs/common";
 import {HttpAdapterHost} from "@nestjs/core";
+import {Middlewares} from "@spica-server/core";
 import {Info, InvokerFn, Target, Trigger, TriggerFlags, TriggerSchema} from "./base";
 import express = require("express");
+import bodyParser = require("body-parser");
 
 enum HttpMethod {
   All = "All",
@@ -17,6 +19,7 @@ enum HttpMethod {
 interface HttpTriggerOptions {
   method: HttpMethod;
   path: string;
+  preflight: boolean;
 }
 
 @Trigger({
@@ -29,6 +32,7 @@ export class HttpTrigger implements Trigger<HttpTriggerOptions> {
   private router = express.Router({mergeParams: true});
 
   constructor(http: HttpAdapterHost) {
+    this.router.use(bodyParser.json());
     http.httpAdapter.use("/fn-execute", this.router);
     http.httpAdapter.use("/fn-execute/*", (req, res) => {
       if (!req.route) {
@@ -52,12 +56,18 @@ export class HttpTrigger implements Trigger<HttpTriggerOptions> {
           title: "Method",
           description: "Http trigger would rely on request method.",
           type: "string",
-          enum: ["All", "Get", "Post", "Put", "Delete", "Options", "Patch", "Head"]
+          enum: ["All", "Get", "Post", "Put", "Delete", "Patch", "Head"]
         },
         path: {
           title: "Path",
           description: "Full route path that function will be served on. eg /books",
           type: "string"
+        },
+        preflight: {
+          title: "Preflight",
+          description: "Whether preflight requests should be handled.",
+          type: "boolean",
+          default: true
         }
       },
       additionalProperties: false
@@ -80,6 +90,9 @@ export class HttpTrigger implements Trigger<HttpTriggerOptions> {
     const method = options.method.toLowerCase();
     const path = options.path.startsWith("/") ? options.path : `/${options.path}`;
     if (invoker) {
+      if (options.preflight) {
+        this.router.use(Middlewares.Preflight);
+      }
       this.router[method](path, (...parameters) => invoker({target, parameters}));
       this.logger.verbose(
         `Registered ${target.id}.${target.handler} to {/fn-execute${path}, ${options.method}}`

@@ -1,63 +1,98 @@
 import {Injectable} from "@nestjs/common";
-import {
-  ChangeStream,
-  DatabaseService,
-  Document,
-  FilterQuery,
-  MongoClient
-} from "@spica-server/database";
-import {Observable} from "rxjs";
+import {ChangeStream, DatabaseService, Document, FilterQuery} from "@spica-server/database";
+import {Observable, Subject, Subscription} from "rxjs";
+import {bufferTime, filter} from "rxjs/operators";
 import {levenshtein} from "./levenshtein";
 import {ChunkKind, StreamChunk} from "./stream";
 
 @Injectable()
 export class RealtimeDatabaseService {
-  constructor(private database: DatabaseService, private mongo: MongoClient) {}
+  count = 0;
+  constructor(private database: DatabaseService) {}
 
   find<T extends Document = any>(
     name: string,
     options: FindOptions<T> = {}
   ): Observable<StreamChunk<T>> {
     return new Observable<StreamChunk<T>>(observer => {
+      options = options || {};
+
+      const streams = new Set<ChangeStream>();
+      const pipeline: object[] = [];
+      const sort = new Subject<any>();
+      let sortSubscription: Subscription;
       let ids = new Set<string>();
-      let stream = this.database.collection(name).find(options.filter);
-
-      if (options.skip) {
-        stream = stream.skip(options.skip);
-      }
-
-      if (options.limit) {
-        stream = stream.limit(options.limit);
-      }
 
       if (options.sort) {
-        stream = stream.sort(options.sort);
-      }
+        const sortedKeys = Object.keys(options.sort);
+        sortSubscription = sort
+          .pipe(
+            filter(change => {
+              if (change.operationType == "update") {
+                // TODO: Check this for subdocument updates
+                const changedKeys: string[] = (change.updateDescription.removedFields || []).concat(
+                  Object.keys(change.updateDescription.updatedFields || {})
+                );
+                return changedKeys.some(k => sortedKeys.indexOf(k) > -1);
+              }
+              return true;
+            }),
+            bufferTime(70),
+            filter(changes => changes.length > 0)
+          )
+          .subscribe(async events => {
+            let syncedIds: string[];
 
-      let timeout: NodeJS.Timeout;
+            if (
+              sortedKeys.length == 1 &&
+              sortedKeys[0] == "_id" &&
+              events.length > 1 &&
+              options.sort._id == -1
+            ) {
+              events = events.reverse();
+            }
 
-      const sortDataSet = () => {
-        clearTimeout(timeout);
-        timeout = setTimeout(() => {
-          let stream = this.database.collection(name).find(options.filter);
-          if (options.skip) {
-            stream = stream.skip(options.skip);
-          }
-          if (options.limit) {
-            stream = stream.limit(options.limit);
-          }
-          if (options.sort) {
-            stream = stream.sort(options.sort);
-          }
+            for (const change of events) {
+              if (change.operationType == "insert") {
+                observer.next({kind: ChunkKind.Insert, document: change.fullDocument});
+                ids.add(change.documentKey._id.toString());
+              }
+            }
 
-          stream.toArray().then(datas => {
-            const syncedIds = datas.map(r => r._id.toString());
-            const changes = levenshtein(syncedIds, ids);
+            // if (
+            //   !options.skip &&
+            //   options.limit &&
+            //   sortedKeys.length == 1 &&
+            //   sortedKeys[0] == "_id"
+            // ) {
+            //   console.log("Falling to local sort.");
+            //   syncedIds = Array.from(ids)
+            //     .sort((a, b) =>
+            //       options.sort._id == 1
+            //         ? new ObjectId(a).generationTime - new ObjectId(b).generationTime
+            //         : new ObjectId(b).generationTime - new ObjectId(a).generationTime
+            //     )
+            //     .slice(0, options.limit);
+            // } else {
+            let stream = this.database.collection(name).find(options.filter);
+            if (options.sort) {
+              stream = stream.sort(options.sort);
+            }
+
+            if (options.skip) {
+              stream = stream.skip(options.skip);
+            }
+
+            if (options.limit) {
+              stream = stream.limit(options.limit);
+            }
+            syncedIds = await stream.toArray().then(datas => datas.map(r => r._id.toString()));
+            // }
+            const changeSequence = levenshtein(ids, syncedIds);
             ids = new Set(syncedIds);
-            observer.next({kind: ChunkKind.Order, sequence: changes.sequence.reverse()});
+            observer.next({kind: ChunkKind.Order, sequence: changeSequence.sequence});
           });
-        }, 100);
-      };
+      }
 
       const getMore = () => {
         this.database
@@ -71,22 +106,30 @@ export class RealtimeDatabaseService {
           });
       };
 
-      const streams = new Set<ChangeStream>();
+      const getInitial = () => {
+        let stream = this.database.collection(name).find(options.filter);
 
-      stream.on("data", data => {
-        observer.next({kind: ChunkKind.Initial, document: data});
-        ids.add(data._id.toString());
-      });
-
-      stream.on("end", () => observer.next({kind: ChunkKind.EndOfInitial}));
-
-      const pipeline: object[] = [
-        {
-          $match: {
-            "ns.coll": name
-          }
+        if (options.sort) {
+          stream = stream.sort(options.sort);
         }
-      ];
+
+        if (options.skip) {
+          stream = stream.skip(options.skip);
+        }
+
+        if (options.limit) {
+          stream = stream.limit(options.limit);
+        }
+
+        stream.on("data", data => {
+          observer.next({kind: ChunkKind.Initial, document: data});
+          ids.add(data._id.toString());
+        });
+
+        stream.on("end", () => observer.next({kind: ChunkKind.EndOfInitial}));
+      };
+
+      getInitial();
 
       if (options.filter) {
         pipeline.push({
@@ -107,7 +150,8 @@ export class RealtimeDatabaseService {
         });
 
         streams.add(
-          this.mongo
+          this.database
+            .collection(name)
             .watch(
               [
                 {
@@ -142,38 +186,43 @@ export class RealtimeDatabaseService {
       }
 
       streams.add(
-        this.mongo
+        this.database
+          .collection(name)
           .watch(pipeline, {
             fullDocument: "updateLookup"
           })
           .on("change", change => {
             switch (change.operationType) {
               case "insert":
-                if (options.limit && ids.size >= options.limit) {
+                if (options.limit && ids.size >= options.limit && !options.sort) {
                   return;
                 }
-                observer.next({kind: ChunkKind.Insert, document: change.fullDocument});
-                ids.add(change.documentKey._id.toString());
+
                 if (options.sort) {
-                  sortDataSet();
+                  // If sorting enabled hand over the event to sort
+                  sort.next(change);
+                } else {
+                  observer.next({kind: ChunkKind.Insert, document: change.fullDocument});
+                  ids.add(change.documentKey._id.toString());
                 }
                 break;
               case "delete":
                 if (ids.has(change.documentKey._id.toString())) {
                   observer.next({kind: ChunkKind.Delete, document: change.documentKey});
                   ids.delete(change.documentKey._id.toString());
+                  // TODO: check this
                   if (options.limit && ids.size < options.limit) {
                     getMore();
                   }
                   if (options.sort) {
-                    sortDataSet();
+                    //sortDataSet();
                   }
                 }
                 break;
               case "replace":
               case "update":
                 if (options.sort) {
-                  sortDataSet();
+                  sort.next(change);
                 }
                 if (
                   !options.filter &&
@@ -198,7 +247,6 @@ export class RealtimeDatabaseService {
                     document: change.fullDocument
                   });
                 }
-
                 break;
               case "drop":
                 ids.clear();
@@ -208,9 +256,16 @@ export class RealtimeDatabaseService {
           })
       );
 
+      this.count += streams.size;
+      console.log("Change streams opened " + this.count);
       return () => {
+        this.count -= streams.size;
+        console.log("Change streams opened " + this.count);
+        if (sortSubscription) {
+          sortSubscription.unsubscribe();
+        }
         for (const stream of streams) {
-          return stream.close();
+          stream.close();
         }
       };
     });

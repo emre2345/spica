@@ -1,12 +1,16 @@
 import {Test} from "@nestjs/testing";
 import {DatabaseService, DatabaseTestingModule, ObjectId} from "@spica-server/database/testing";
 import {timer} from "rxjs";
-import {bufferCount, delay, first, skip, take, takeUntil, tap} from "rxjs/operators";
+import {bufferCount, delay, skip, take, takeUntil, tap, first} from "rxjs/operators";
 import {RealtimeDatabaseService} from "./database.service";
 import {SequenceKind} from "./levenshtein";
 import {ChunkKind} from "./stream";
 
 jasmine.DEFAULT_TIMEOUT_INTERVAL = 8000;
+
+const LATENCY = 70;
+
+const SKIP = new Object();
 
 function wait(time: number = 100) {
   return new Promise(resolve => setTimeout(resolve, time));
@@ -26,8 +30,15 @@ describe("realtime database", () => {
     database = bed.get(DatabaseService);
 
     jasmine.addCustomEqualityTester((actual, expected) => {
-      if (actual instanceof ObjectId && expected instanceof ObjectId) {
-        return actual.equals(expected);
+      if (expected == SKIP) {
+        return true;
+      }
+      if (
+        (actual instanceof ObjectId && expected instanceof ObjectId) ||
+        (typeof expected == "string" && actual instanceof ObjectId) ||
+        (typeof actual == "string" && expected instanceof ObjectId)
+      ) {
+        return new ObjectId(actual).equals(expected);
       }
     });
   });
@@ -67,9 +78,7 @@ describe("realtime database", () => {
           done();
         });
 
-      setTimeout(() => {
-        database.collection("test1").insertOne({test: 1});
-      }, 100);
+      setTimeout(() => database.collection("test1").insertOne({test: 1}), LATENCY);
     });
 
     it("should return initial and added document in order", async done => {
@@ -77,7 +86,10 @@ describe("realtime database", () => {
       await coll.insertOne({test: 1});
       realtime
         .find("test2")
-        .pipe(bufferCount(4))
+        .pipe(
+          take(4),
+          bufferCount(4)
+        )
         .subscribe(([initial, endofinitial, firstInsert, secondInsert]) => {
           expect(initial.kind).toBe(ChunkKind.Initial);
           expect(initial.document.test).toBe(1);
@@ -88,9 +100,7 @@ describe("realtime database", () => {
           expect(secondInsert.document.test).toBe(3);
           done();
         });
-      setTimeout(() => {
-        coll.insertMany([{test: 2}, {test: 3}]);
-      }, 500);
+      setTimeout(() => coll.insertMany([{test: 2}, {test: 3}]), LATENCY);
     });
 
     it("should return deleted document", async done => {
@@ -107,9 +117,7 @@ describe("realtime database", () => {
           expect(inserted.insertedIds[1].equals(deleted.document._id)).toBeTruthy();
           done();
         });
-      setTimeout(() => {
-        coll.deleteOne({test: 3});
-      }, 1);
+      setTimeout(() => coll.deleteOne({test: 3}), LATENCY);
     });
 
     it("should return edited document", async done => {
@@ -126,9 +134,7 @@ describe("realtime database", () => {
           expect(updated.document.test).toBe(4);
           done();
         });
-      setTimeout(() => {
-        coll.findOneAndUpdate({test: 2}, {$set: {test: 4}});
-      }, 1);
+      setTimeout(() => coll.findOneAndUpdate({test: 2}, {$set: {test: 4}}), LATENCY);
     });
   });
 
@@ -161,9 +167,11 @@ describe("realtime database", () => {
           expect(third.document.anotherfilter).toBe(true);
           done();
         });
-      setTimeout(() => {
-        database.collection("test6").insertMany([{stars: 6}, {stars: 7, anotherfilter: true}]);
-      }, 1);
+      setTimeout(
+        () =>
+          database.collection("test6").insertMany([{stars: 6}, {stars: 7, anotherfilter: true}]),
+        LATENCY
+      );
     });
 
     it("should return deleted document", async done => {
@@ -187,7 +195,7 @@ describe("realtime database", () => {
       setTimeout(async () => {
         await coll.deleteOne({test: 3, has_star: false});
         await coll.deleteOne({test: 3, has_star: true});
-      }, 1);
+      }, LATENCY);
     });
 
     it("should return edited document", async done => {
@@ -204,9 +212,7 @@ describe("realtime database", () => {
           expect(updated.document.test).toBe(4);
           done();
         });
-      setTimeout(() => {
-        coll.findOneAndUpdate({test: 2}, {$set: {test: 4}});
-      }, 1);
+      setTimeout(() => coll.findOneAndUpdate({test: 2}, {$set: {test: 4}}), LATENCY);
     });
 
     it("should return updated document if it does not match with filter anymore", async done => {
@@ -222,9 +228,7 @@ describe("realtime database", () => {
           expect(updated).toEqual({kind: ChunkKind.Expunge, document: {_id: id}});
           done();
         });
-      setTimeout(() => {
-        coll.findOneAndUpdate({_id: id}, {$set: {subfilter: false}});
-      }, 1);
+      setTimeout(() => coll.findOneAndUpdate({_id: id}, {$set: {subfilter: false}}), LATENCY);
     });
 
     it("should return replaced document if it does not match with filter anymore", async done => {
@@ -240,9 +244,7 @@ describe("realtime database", () => {
           expect(updated).toEqual({kind: ChunkKind.Expunge, document: {_id: id}});
           done();
         });
-      setTimeout(() => {
-        coll.findOneAndReplace({_id: id}, {test: 2, subfilter: false});
-      }, 1);
+      setTimeout(() => coll.findOneAndReplace({_id: id}, {test: 2, subfilter: false}), LATENCY);
     });
   });
 
@@ -287,7 +289,7 @@ describe("realtime database", () => {
         // These operations should not affect anything in our cursor
         await coll.updateOne({_id: insertedIds[1]}, {$set: {test: 25}});
         await coll.deleteOne({_id: insertedIds[1]});
-      }, 1);
+      }, LATENCY);
     });
 
     it("should limit to N items", async done => {
@@ -329,7 +331,7 @@ describe("realtime database", () => {
         // These operations should not affect anything in our cursor
         await coll.insertMany([{test: 12}, {test: 19.5}]);
         await coll.deleteOne({_id: insertedIds[2]});
-      }, 1);
+      }, LATENCY);
     });
 
     it("should skip and limit to N items", async done => {
@@ -361,19 +363,15 @@ describe("realtime database", () => {
           }
         });
 
-      setTimeout(async () => {
-        await coll.deleteOne({_id: insertedIds[3]});
-      }, 1);
+      setTimeout(async () => await coll.deleteOne({_id: insertedIds[3]}), LATENCY);
     });
   });
 
   describe("with sort", () => {
     it("should order descending by id", async () => {
       const coll = database.collection("test14");
-      const insertedIds = await coll
-        .insertMany([{test: 1}, {test: 2}, {test: 4}, {test: 5}])
-        .then(r => r.insertedIds);
-
+      const insertedIds = (await coll.insertMany([{test: 1}, {test: 2}, {test: 4}, {test: 5}]))
+        .insertedIds;
       realtime
         .find("test14", {sort: {_id: -1}})
         .pipe(bufferCount(5))
@@ -390,9 +388,8 @@ describe("realtime database", () => {
 
     it("should order ascending by id", async () => {
       const coll = database.collection("test15");
-      const insertedIds = await coll
-        .insertMany([{test: 1}, {test: 2}, {test: 4}, {test: 5}])
-        .then(r => r.insertedIds);
+      const insertedIds = (await coll.insertMany([{test: 1}, {test: 2}, {test: 4}, {test: 5}]))
+        .insertedIds;
 
       realtime
         .find("test15", {sort: {_id: 1}})
@@ -430,25 +427,161 @@ describe("realtime database", () => {
               sequence: [
                 {
                   kind: SequenceKind.Substitute,
-                  item: insertedIds[0].toHexString(),
-                  with: insertedIds[2].toHexString(),
-                  at: 0
+                  item: insertedIds[2],
+                  with: insertedIds[0],
+                  at: 2
                 },
                 {
                   kind: SequenceKind.Substitute,
-                  item: insertedIds[2].toHexString(),
-                  with: insertedIds[0].toHexString(),
-                  at: 2
+                  item: insertedIds[0],
+                  with: insertedIds[2],
+                  at: 0
                 }
               ]
             }
           ]);
           done();
         });
-      setTimeout(async () => {
-        await coll.updateOne({_id: insertedIds[2]}, {$set: {test: 1}});
-        await coll.updateOne({_id: insertedIds[0]}, {$set: {test: 3}});
-      }, 1);
+      await wait(LATENCY);
+      await Promise.all([
+        coll.updateOne({_id: insertedIds[2]}, {$set: {test: 1}}),
+        coll.updateOne({_id: insertedIds[0]}, {$set: {test: 3}})
+      ]);
     });
+
+    it("should order descending by _id property and limit to 2", async done => {
+      const coll = database.collection("test17");
+      const insertedId = await coll.insertOne({test: 1}).then(r => r.insertedId);
+      realtime
+        .find("test17", {sort: {_id: -1}, limit: 2})
+        .pipe(bufferCount(4))
+        .subscribe(chunks => {
+          expect(chunks).toEqual([
+            {kind: ChunkKind.Initial, document: {_id: insertedId, test: 1}},
+            {kind: ChunkKind.EndOfInitial},
+            {kind: ChunkKind.Insert, document: {_id: laterInsertedId, test: 2}},
+            {
+              kind: ChunkKind.Order,
+              sequence: [
+                {
+                  kind: SequenceKind.Substitute,
+                  item: laterInsertedId,
+                  with: insertedId,
+                  at: 1
+                },
+                {
+                  kind: SequenceKind.Substitute,
+                  item: insertedId,
+                  with: laterInsertedId,
+                  at: 0
+                }
+              ]
+            }
+          ]);
+          done();
+        });
+      await wait(LATENCY);
+      const laterInsertedId = (await coll.insertOne({test: 2})).insertedId;
+    });
+
+    // it("should order descending by _id property and limit to one", async done => {
+    //   const coll = database.collection("test18");
+    //   const insertedId = await coll.insertOne({test: 1}).then(r => r.insertedId);
+    //   realtime
+    //     .find("test18", {sort: {_id: -1}, limit: 1})
+    //     .pipe(bufferCount(4))
+    //     .subscribe(chunks => {
+    //       expect(chunks).toEqual([
+    //         {kind: ChunkKind.Initial, document: {_id: insertedId, test: 1}},
+    //         {kind: ChunkKind.EndOfInitial},
+    //         {kind: ChunkKind.Insert, document: {_id: laterInsertedId, test: 2}},
+    //         {
+    //           kind: ChunkKind.Order,
+    //           sequence: [
+    //             {
+    //               kind: SequenceKind.Delete,
+    //               at: 0,
+    //               item: insertedId
+    //             }
+    //           ]
+    //         }
+    //       ]);
+    //       done();
+    //     });
+    //   await wait(LATENCY);
+    //   const laterInsertedId = (await coll.insertOne({test: 2})).insertedId;
+    // });
+
+    // it("should order descending by _id property and limit to one and expunge", async done => {
+    //   const coll = database.collection("test19");
+    //   const insertedId = await coll.insertOne({test: 1}).then(r => r.insertedId);
+    //   realtime
+    //     .find("test19", {sort: {_id: -1}, limit: 4})
+    //     .pipe(bufferCount(10))
+    //     .subscribe(chunks => {
+    //       expect(chunks).toEqual([
+    //         {kind: ChunkKind.Initial, document: {_id: insertedId, test: 1}},
+    //         {kind: ChunkKind.EndOfInitial},
+    //         {kind: ChunkKind.Insert, document: {_id: laterInsertedIds[2], test: 4}},
+    //         {kind: ChunkKind.Insert, document: {_id: laterInsertedIds[1], test: 3}},
+    //         {kind: ChunkKind.Insert, document: {_id: laterInsertedIds[0], test: 2}},
+    //         // Move first added item to last
+    //         {
+    //           kind: ChunkKind.Order,
+    //           sequence: [
+    //             {kind: SequenceKind.Insert, item: insertedId, at: 3},
+    //             {kind: SequenceKind.Delete, item: insertedId, at: 0}
+    //           ]
+    //         },
+    //         {kind: ChunkKind.Insert, document: {_id: laterInsertedIds2[2], test: 7}},
+    //         {kind: ChunkKind.Insert, document: {_id: laterInsertedIds2[1], test: 6}},
+    //         {kind: ChunkKind.Insert, document: {_id: laterInsertedIds2[0], test: 5}},
+    //         {
+    //           kind: ChunkKind.Order,
+    //           sequence: [
+    //             {kind: SequenceKind.Insert, item: laterInsertedIds[2], at: 3},
+    //             {kind: SequenceKind.Delete, item: insertedId, at: 3},
+    //             {kind: SequenceKind.Delete, item: laterInsertedIds[0], at: 2},
+    //             {kind: SequenceKind.Delete, item: laterInsertedIds[1], at: 1},
+    //             {kind: SequenceKind.Delete, item: laterInsertedIds[2], at: 0}
+    //           ]
+    //         }
+    //       ]);
+    //       done();
+    //     });
+    //   await wait(LATENCY);
+    //   const laterInsertedIds = (await coll.insertMany([{test: 2}, {test: 3}, {test: 4}]))
+    //     .insertedIds;
+    //   await wait(LATENCY);
+    //   const laterInsertedIds2 = (await coll.insertMany([{test: 5}, {test: 6}, {test: 7}]))
+    //     .insertedIds;
+    // });
+
+    // it("should order descending by _id property and limit to one and expunge", async done => {
+    //   const coll = database.collection("test20");
+    //   const initiallyInsertedIds = (await coll.insertMany([{test: 1}, {test: 2}])).insertedIds;
+    //   realtime
+    //     .find("test20", {sort: {_id: -1}, limit: 2})
+    //     .pipe(bufferCount(6))
+    //     .subscribe(chunks => {
+    //       expect(chunks).toEqual([
+    //         {kind: ChunkKind.Initial, document: {_id: initiallyInsertedIds[1], test: 2}},
+    //         {kind: ChunkKind.Initial, document: {_id: initiallyInsertedIds[0], test: 1}},
+    //         {kind: ChunkKind.EndOfInitial},
+    //         {kind: ChunkKind.Insert, document: {_id: insertedIds[1], test: 4}},
+    //         {kind: ChunkKind.Insert, document: {_id: insertedIds[0], test: 3}},
+    //         {
+    //           kind: ChunkKind.Order,
+    //           sequence: [
+    //             {kind: SequenceKind.Delete, item: initiallyInsertedIds[0], at: 1},
+    //             {kind: SequenceKind.Delete, item: initiallyInsertedIds[1], at: 0}
+    //           ]
+    //         }
+    //       ]);
+    //       done();
+    //     });
+    //   await wait(LATENCY * 2);
+    //   const insertedIds = (await coll.insertMany([{test: 3}, {test: 4}])).insertedIds;
+    // });
   });
 });

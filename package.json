@@ -1,6 +1,6 @@
 {
   "name": "spica-sources",
-  "version": "1.0.0-beta",
+  "version": "0.1.0",
   "private": true,
   "license": "AGPLv3",
   "author": {
@@ -34,6 +34,7 @@
     "@nestjs/passport": "^6.0.0",
     "@nestjs/platform-express": "^6.1.1",
     "@nestjs/platform-socket.io": "^6.1.1",
+    "@nestjs/platform-ws": "^6.6.7",
     "@nestjs/websockets": "^6.1.1",
     "@schematics/angular": "^8.0.0-beta.7",
     "ajv": "^6.6.1",
@@ -84,7 +85,8 @@
     "url": "^0.11.0",
     "vm2": "^3.6.9",
     "winston": "^3.2.1",
-    "winston-daily-rotate-file": "^3.6.0"
+    "winston-daily-rotate-file": "^3.6.0",
+    "ws": "^7.1.2"
   },
   "devDependencies": {
     "@bazel/bazel": "^0.27.0",

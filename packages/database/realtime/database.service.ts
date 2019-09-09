@@ -53,6 +53,7 @@ export class RealtimeDatabaseService {
             }
 
             for (const change of events) {
+              // TODO: unqueue this events and sent if needed.
               if (change.operationType == "insert") {
                 observer.next({kind: ChunkKind.Insert, document: change.fullDocument});
                 ids.add(change.documentKey._id.toString());

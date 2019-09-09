@@ -6,7 +6,7 @@ import {filter, map, takeUntil} from "rxjs/operators";
 
 @WebSocketGateway({
   namespace: "bucket",
-  transports: ["websocket"]
+  transports: ["websocket"],
 })
 export class RealtimeGateway {
   constructor(private realtime: RealtimeDatabaseService) {}

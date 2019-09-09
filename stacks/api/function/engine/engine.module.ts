@@ -3,13 +3,14 @@ import {FunctionEngine} from "./engine";
 import {FunctionExecutor, VM2Executor} from "./executor";
 import {FsHost, FunctionHost} from "./host";
 import {LoggerHost, WinstonLogger} from "./logger";
+import {DatabaseUnitModule} from "./module/database";
 import {EngineRegistry} from "./registry";
 import {SubscriptionEngine} from "./subscription/engine";
 import {RequestSubscriptionExecutor, SubscriptionExecutor} from "./subscription/executor";
 import {DatabaseTriggerModule} from "./trigger/database";
+import {FirehoseTriggerModule} from "./trigger/firehose";
 import {HttpTriggerModule} from "./trigger/http";
 import {ScheduleTriggerModule} from "./trigger/schedule";
-import {DatabaseUnitModule} from "./module/database";
 
 @Module({})
 export class EngineModule {
@@ -19,6 +20,7 @@ export class EngineModule {
       imports: [
         DatabaseUnitModule,
         HttpTriggerModule,
+        FirehoseTriggerModule,
         DatabaseTriggerModule,
         ScheduleTriggerModule
       ],

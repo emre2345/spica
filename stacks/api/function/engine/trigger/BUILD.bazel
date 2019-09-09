@@ -50,3 +50,16 @@ ts_library(
         "@npm//moment-timezone",  # Not direct dependency
     ],
 )
+
+ts_library(
+    name = "firehose",
+    srcs = ["firehose.ts"],
+    data = ["firehose.d.ts"],
+    deps = [
+        ":trigger",
+        "@npm//@types/node",
+        "@npm//@nestjs/core",
+        "@npm//@nestjs/common",
+        "@npm//ws",
+    ],
+)

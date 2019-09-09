@@ -22,3 +22,13 @@ ts_library(
         "@npm//@types/mongodb",
     ],
 )
+
+ts_library(
+    name = "kv",
+    srcs = ["kv.ts"],
+    data = ["kv.d.ts"],
+    deps = [
+        ":module",
+        "@npm//@nestjs/common",
+    ],
+)

@@ -54,7 +54,7 @@ describe("realtime database", () => {
       .subscribe(() => database.dropCollection("willbedropped"), undefined, () => done());
   });
 
-  describe("without match, sort and limit", () => {
+  describe("without filter, sort and limit", () => {
     it("should return inital value", done => {
       realtime
         .find("test")
@@ -138,7 +138,7 @@ describe("realtime database", () => {
     });
   });
 
-  describe("with query", () => {
+  describe("with filter", () => {
     it("should return inital value", async done => {
       await database.collection("test5").insertMany([{stars: 3}, {stars: 4}, {stars: 5}]);
       realtime

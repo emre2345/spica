@@ -58,11 +58,9 @@ export class FirehoseTrigger implements Trigger<FirehoseOptions>, OnModuleInit {
       const cl = new FirehoseClient(ws);
       this.invoke("connection", cl);
       ws.on("message", (raw: string) => {
-        console.log(raw);
         try {
           const event = JSON.parse(raw);
-          console.log(event);
-          if (typeof event.name == "string" ) {
+          if (typeof event.name == "string") {
             this.invoke(event.name, cl, event.data);
           }
         } catch {}
@@ -88,12 +86,15 @@ export class FirehoseTrigger implements Trigger<FirehoseOptions>, OnModuleInit {
     });
   }
 
-  invoke(event: string, client: any, data?: any) {
+  invoke(name: string, client: any, data?: any) {
     for (const pair of this.eventTargetMap.values()) {
-      if (pair.event == event || (pair.event == "*" && event == "connection" || event == "close")) {
+      if (
+        pair.event == name ||
+        (pair.event == "*" && (name == "connection" || name == "close"))
+      ) {
         pair.invoker({
           target: pair.target,
-          parameters: [{client, pool: this.pool}, {event, data}]
+          parameters: [{client, pool: this.pool}, {name, data}]
         });
       }
     }

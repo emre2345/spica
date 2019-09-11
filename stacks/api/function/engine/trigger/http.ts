@@ -89,6 +89,7 @@ export class HttpTrigger implements Trigger<HttpTriggerOptions> {
   register(invoker: InvokerFn, target: Target, options: HttpTriggerOptions) {
     const method = options.method.toLowerCase();
     const path = options.path.startsWith("/") ? options.path : `/${options.path}`;
+
     if (invoker) {
       if (options.preflight) {
         this.router.use(Middlewares.Preflight);
@@ -99,7 +100,7 @@ export class HttpTrigger implements Trigger<HttpTriggerOptions> {
       );
     } else {
       const index = this.router.stack.findIndex(layer => layer.route && layer.route.path == path);
-      if (index) {
+      if (index != -1) {
         this.router.stack.splice(index, 1);
         this.logger.verbose(
           `Deregistered ${target.id}.${target.handler} to {/fn-execute${path}, ${options.method}}`

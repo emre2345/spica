@@ -43,7 +43,7 @@ export class FunctionEngine {
           };
           const logger = this.logger.create(execution);
           execution.logger = logger.logger;
-          return this.executor.execute(execution).then(() => logger.dispose());
+          return this.executor.execute(execution);
         };
         trigger.register(invoker, target, meta.options);
       } else if (trigger && !meta.active) {

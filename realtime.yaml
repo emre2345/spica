@@ -1,11 +1,10 @@
 apiVersion: apps/v1beta1
 kind: StatefulSet
 metadata:
-  namespace: realtime
   name: database
 spec:
   serviceName: mongo
-  replicas: 3
+  replicas: 2
   template:
     metadata:
       labels:
@@ -27,13 +26,13 @@ spec:
           ports:
             - containerPort: 27017
           volumeMounts:
-            - name: database-data-temp
+            - name: database-data
               mountPath: /data/db
   volumeClaimTemplates:
     - metadata:
-        namespace: realtime
-        name: database-data-temp
+        name: database-data
       spec:
+        storageClassName: ssd
         accessModes:
           - ReadWriteOnce
         resources:
@@ -43,7 +42,6 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  namespace: realtime
   name: mongo
 spec:
   publishNotReadyAddresses: true
@@ -57,7 +55,6 @@ spec:
 apiVersion: apps/v1beta1
 kind: StatefulSet
 metadata:
-  namespace: realtime
   name: spica
 spec:
   serviceName: spica
@@ -82,7 +79,7 @@ spec:
             - name: PORT
               value: "4300"
             - name: DATABASE_URI
-              value: mongodb://database-0.mongo.realtime.svc.cluster.local,database-1.mongo.realtime.svc.cluster.local,database-2.mongo.realtime.svc.cluster.local
+              value: mongodb://database-0.mongo.default.svc.cluster.local,database-1.mongo.default.svc.cluster.local
             - name: REPLICA_SET
               value: rs0
             - name: DATABASE_NAME
@@ -93,12 +90,11 @@ spec:
             - name: PERSISTENT_PATH
               value: /data
           volumeMounts:
-            - name: spica-data-temp
+            - name: spica-data
               mountPath: /data
   volumeClaimTemplates:
     - metadata:
-        name: spica-data-temp
-        namespace: realtime
+        name: spica-data
       spec:
         accessModes:
           - ReadWriteOnce
@@ -109,7 +105,6 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  namespace: realtime
   name: spica
 spec:
   type: NodePort
@@ -126,15 +121,14 @@ spec:
 apiVersion: extensions/v1beta1
 kind: Ingress
 metadata:
-  namespace: realtime
   name: gateway
   annotations:
+    nginx.ingress.kubernetes.io/ssl-redirect: "false"
     nginx.ingress.kubernetes.io/rewrite-target: /$1
     kubernetes.io/ingress.class: nginx
 spec:
   rules:
-    - host: realtime.spicaengine.com
-      http:
+    - http:
         paths:
           - path: /spica/?(.*)
             backend:

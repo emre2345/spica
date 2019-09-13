@@ -77,7 +77,7 @@ export class FunctionEngine {
       .stub({}, execution.logger.info)
       .then(parameters => {
         execution.parameters = parameters;
-        return this.executor.execute(execution);
+        return this.executor.execute(execution).then(() => logger.dispose());
       })
       .then(() => {
         stream.write(JSON.stringify({type: "event", state: "succeeded"}));

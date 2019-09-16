@@ -31,6 +31,10 @@ export class FirehosePool {
       }
     });
   }
+
+  heartbeat() {
+    this.send("heartbeat", Date.now());
+  }
 }
 
 export interface FirehoseOptions {
@@ -57,9 +61,13 @@ export class FirehoseTrigger implements Trigger<FirehoseOptions>, OnModuleInit {
     this.wss.on("connection", ws => {
       const cl = new FirehoseClient(ws);
       this.invoke("connection", cl);
+      ws.alive = true;
       ws.on("message", (raw: string) => {
         try {
           const event = JSON.parse(raw);
+          if (event.name == "heartbeat") {
+            ws.alive = true;
+          }
           if (typeof event.name == "string") {
             this.invoke(event.name, cl, event.data);
           }
@@ -67,6 +75,16 @@ export class FirehoseTrigger implements Trigger<FirehoseOptions>, OnModuleInit {
       });
       ws.on("close", () => this.invoke("close", cl));
     });
+
+    setInterval(() => {
+      this.wss.clients.forEach((ws: any) => {
+        if (!ws.alive) {
+          return ws.terminate();
+        }
+        ws.alive = false;
+      });
+      this.pool.heartbeat();
+    }, 30000);
 
     const server = this.http.httpAdapter.getHttpServer();
     const [socketIoUpgrade] = server.listeners("upgrade");
@@ -88,10 +106,7 @@ export class FirehoseTrigger implements Trigger<FirehoseOptions>, OnModuleInit {
 
   invoke(name: string, client: any, data?: any) {
     for (const pair of this.eventTargetMap.values()) {
-      if (
-        pair.event == name ||
-        (pair.event == "*" && (name == "connection" || name == "close"))
-      ) {
+      if (pair.event == name || (pair.event == "*" && (name == "connection" || name == "close"))) {
         pair.invoker({
           target: pair.target,
           parameters: [{client, pool: this.pool}, {name, data}]
